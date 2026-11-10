@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz diário</title>
+<style>
+  :root {
+    --bg: #eef1f4;
+    --card: #ffffff;
+    --ink: #17212b;
+    --muted: #5d6b79;
+    --line: #d5dce3;
+    --brand: #1f3fbf;
+    --brand-ink: #ffffff;
+    --ok: #17714a;
+    --ok-bg: #dff3e8;
+    --bad: #b3322f;
+    --bad-bg: #f9e1e0;
+    --timer: #c98a00;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11171d;
+      --card: #1b242d;
+      --ink: #e8edf2;
+      --muted: #9aa8b6;
+      --line: #2f3c48;
+      --brand: #7d98ff;
+      --brand-ink: #0e1530;
+      --ok: #62d49a;
+      --ok-bg: #173a2a;
+      --bad: #ff8c88;
+      --bad-bg: #411f1f;
+      --timer: #f0b429;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.25rem; margin: 0 0 12px; line-height: 1.35; }
+  p { margin: 0 0 12px; }
+  .sub { color: var(--muted); margin-bottom: 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 0.9rem; margin-bottom: 14px; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+  .bar > i { display: block; height: 100%; background: var(--brand); }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input[type=text] {
+    width: 100%; font: inherit; padding: 12px 14px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  input[type=text]:focus-visible, button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+  button { font: inherit; cursor: pointer; }
+  .primary {
+    background: var(--brand); color: var(--brand-ink); border: 0; border-radius: 8px;
+    padding: 12px 20px; font-weight: 600; margin-top: 14px;
+  }
+  .primary:disabled { opacity: 0.55; cursor: default; }
+  .opt {
+    display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left;
+    background: var(--card); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--brand); }
+  .opt b { min-width: 1.4em; color: var(--muted); }
+  .opt:disabled { cursor: default; }
+  .opt.ok { background: var(--ok-bg); border-color: var(--ok); }
+  .opt.bad { background: var(--bad-bg); border-color: var(--bad); }
+  .feedback { margin: 16px 0 0; font-weight: 600; }
+  .feedback.ok { color: var(--ok); }
+  .feedback.bad { color: var(--bad); }
+  .err { color: var(--bad); font-weight: 600; }
+  .stats { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+  .stat { flex: 1 1 140px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .stat strong { display: block; font-size: 1.5rem; }
+  .stat span { color: var(--muted); font-size: 0.9rem; }
+  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 0; margin-top: 18px; }
+  .tablewrap { overflow-x: auto; margin-top: 16px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .actions .primary { margin-top: 0; }
+  .secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px 20px; font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) { .bar > i { transition: width .3s; } }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="titulo"></h1>
+  <p class="sub" id="subtitulo"></p>
+  <div id="app"></div>
+</main>
+
+<script>
+/* ============ CONFIGURAÇÃO ============ */
+const API = 'https://script.google.com/macros/s/AKfycbx_qXw3AU0qkLiMDbiF305espGExgoOHrzLt1ggAY5Eho1aQGNdzLHAoFNUUE4agZgeSA/exec';   // URL do app da web (termina em /exec)
+const TITULO = 'Quiz diário';
+const SUBTITULO = 'Responda com atenção: o tempo de resposta também conta.';
+/* ====================================== */
+
+document.getElementById('titulo').textContent = TITULO;
+document.getElementById('subtitulo').textContent = SUBTITULO;
+document.title = TITULO;
+
+const app = document.getElementById('app');
+let nome = '';
+let st = null;
+
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  kids.flat().forEach(c => e.append(c));
+  return e;
+}
+function mostrar(...nodes) { app.replaceChildren(...nodes); }
+function seg(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + ' s'; }
+function dataBR(iso) { const [a, m, d] = iso.split('-'); return d + '/' + m + '/' + a; }
+
+async function api(params) {
+  if (API.startsWith('COLE_AQUI')) throw new Error('Configure a URL do Apps Script no arquivo index.html.');
+  const r = await fetch(API + '?' + new URLSearchParams(params));
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  return d;
+}
+
+/* ---------- telas ---------- */
+function telaNome(erro) {
+  const input = h('input', { type: 'text', id: 'nome', autocomplete: 'name', maxlength: '80', value: nome });
+  const msg = h('p', { class: 'err' }, erro || '');
+  const form = h('div', { class: 'card' },
+    h('label', { for: 'nome' }, 'Seu nome completo'),
+    input,
+    msg,
+    h('button', { class: 'primary', onclick: iniciar }, 'Começar'),
+    h('p', { class: 'sub', style: 'margin:14px 0 0' }, 'Use sempre o mesmo nome (igual em todos os dias) para que suas respostas sejam somadas.')
+  );
+  async function iniciar() {
+    const v = input.value.trim().replace(/\s+/g, ' ');
+    if (v.length < 3) { msg.textContent = 'Digite seu nome completo.'; return; }
+    nome = v;
+    try { localStorage.setItem('quiz_nome', nome); } catch (e) {}
+    carregar();
+  }
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') iniciar(); });
+  mostrar(form);
+  input.focus();
+}
+
+async function carregar() {
+  mostrar(h('div', { class: 'card' }, h('p', {}, 'Carregando…')));
+  try {
+    st = await api({ action: 'state', name: nome });
+    proximo();
+  } catch (e) {
+    mostrar(h('div', { class: 'card' },
+      h('p', { class: 'err' }, e.message),
+      h('button', { class: 'primary', onclick: carregar }, 'Tentar de novo')));
+  }
+}
+
+function proximo() {
+  if (st.liberado === 0) {
+    return mostrar(h('div', { class: 'card' },
+      h('h2', {}, 'O desafio ainda não começou'),
+      h('p', {}, 'As perguntas do primeiro dia serão liberadas em ' + dataBR(st.dias[0]) + '.'),
+      trocarNome()));
+  }
+  const pend = st.perguntas.filter(q => !st.respondidas[q.id]);
+  if (!pend.length) return telaFim();
+  telaPergunta(pend[0]);
+}
+
+function trocarNome() {
+  return h('button', { class: 'link', onclick: () => { nome = ''; try { localStorage.removeItem('quiz_nome'); } catch (e) {} telaNome(); } },
+    'Não sou ' + (nome || 'esta pessoa') + ' — trocar nome');
+}
+
+function telaPergunta(q) {
+  const doDia = st.perguntas.filter(x => x.dia === q.dia);
+  const pct = Math.round(((q.seq - 1) / doDia.length) * 100);
+  const feedback = h('p', { class: 'feedback', 'aria-live': 'polite' });
+  const area = h('div', {});
+  const botoes = q.opcoes.map(o => h('button', { class: 'opt', 'data-letra': o.letra, onclick: () => escolher(o.letra) },
+    h('b', {}, o.letra + ')'), h('span', {}, o.texto)));
+
+  mostrar(h('div', { class: 'card' },
+    h('div', { class: 'meta' },
+      h('span', {}, 'Dia ' + q.dia + ' de ' + st.totalDias + ' · pergunta ' + q.seq + ' de ' + doDia.length),
+      h('span', {}, nome)),
+    h('div', { class: 'bar' }, h('i', { style: 'width:' + pct + '%' })),
+    h('h2', {}, q.texto),
+    ...botoes,
+    feedback,
+    area));
+
+  const t0 = performance.now();   // cronômetro começa quando a pergunta aparece
+  let enviado = false;
+
+  async function escolher(letra, msFixo) {
+    if (enviado) return;
+    enviado = true;
+    const ms = msFixo ?? Math.round(performance.now() - t0);
+    botoes.forEach(b => b.disabled = true);
+    area.replaceChildren();
+    feedback.textContent = 'Enviando…';
+    feedback.className = 'feedback';
+    try {
+      const r = await api({ action: 'answer', name: nome, qid: q.id, choice: letra, ms: ms });
+      st.respondidas[q.id] = { escolha: letra, acertou: r.acertou, ms: ms, certa: r.certa };
+      botoes.forEach(b => {
+        const l = b.dataset.letra;
+        if (l === r.certa) b.classList.add('ok');
+        else if (l === letra) b.classList.add('bad');
+      });
+      feedback.textContent = r.acertou ? 'Resposta correta!' : 'Resposta incorreta. A alternativa certa é a ' + r.certa + '.';
+      feedback.className = 'feedback ' + (r.acertou ? 'ok' : 'bad');
+      const ultima = st.perguntas.every(x => st.respondidas[x.id]);
+      area.append(h('button', { class: 'primary', onclick: proximo }, ultima ? 'Ver meu resultado' : 'Próxima pergunta'));
+    } catch (e) {
+      enviado = false;
+      feedback.textContent = e.message;
+      feedback.className = 'feedback bad';
+      if (/já respondeu/i.test(e.message)) {
+        area.append(h('button', { class: 'primary', onclick: carregar }, 'Continuar'));
+      } else {
+        area.append(h('button', { class: 'primary', onclick: () => escolher(letra, ms) }, 'Reenviar resposta'));
+      }
+    }
+  }
+}
+
+function telaFim() {
+  const resp = Object.values(st.respondidas);
+  const acertos = resp.filter(r => r.acertou).length;
+  const media = resp.length ? resp.reduce((s, r) => s + r.ms, 0) / resp.length : 0;
+  const completo = st.liberado >= st.totalDias;
+  mostrar(h('div', { class: 'card' },
+    h('h2', {}, completo ? 'Desafio concluído' : 'Perguntas de hoje concluídas'),
+    h('p', {}, completo
+      ? 'Obrigado por participar! O ranking final será divulgado em breve.'
+      : 'Volte no próximo dia para responder as novas perguntas. O ranking será divulgado ao final do desafio.'),
+    h('div', { class: 'stats' },
+      h('div', { class: 'stat' }, h('strong', {}, acertos + ' de ' + resp.length), h('span', {}, 'acertos até agora')),
+      h('div', { class: 'stat' }, h('strong', {}, seg(media)), h('span', {}, 'tempo médio por resposta'))),
+    trocarNome()));
+}
+
+/* ---------- ranking (somente com ?admin=SENHA) ---------- */
+async function telaRanking(key) {
+  mostrar(h('div', { class: 'card' }, h('p', {}, 'Carregando ranking…')));
+  try {
+    const d = await api({ action: 'ranking', key: key });
+    const dias = Array.from({ length: d.totalDias }, (_, i) => i + 1);
+    const cab = h('tr', {},
+      h('th', { class: 'n' }, '#'), h('th', {}, 'Nome'),
+      h('th', { class: 'n' }, 'Acertos'), h('th', { class: 'n' }, 'Tempo médio'),
+      dias.map(n => h('th', { class: 'n' }, 'Dia ' + n)));
+    const linhas = d.ranking.map((p, i) => h('tr', {},
+      h('td', { class: 'n' }, String(i + 1)), h('td', {}, p.nome),
+      h('td', { class: 'n' }, p.acertos + '/' + p.respondidas), h('td', { class: 'n' }, seg(p.mediaMs)),
+      p.porDia.map(x => h('td', { class: 'n' }, x.respondidas ? x.acertos + '/' + x.respondidas + ' · ' + seg(x.mediaMs) : '–'))));
+
+    const csv = () => {
+      const rows = [['Posição', 'Nome', 'Acertos', 'Respondidas', 'Tempo médio (s)', ...dias.map(n => 'Dia ' + n + ' (acertos)')]];
+      d.ranking.forEach((p, i) => rows.push([i + 1, p.nome, p.acertos, p.respondidas, (p.mediaMs / 1000).toFixed(2).replace('.', ','), ...p.porDia.map(x => x.acertos)]));
+      const txt = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\n');
+      const blob = new Blob(['\ufeff' + txt], { type: 'text/csv;charset=utf-8' });
+      const a = h('a', { href: URL.createObjectURL(blob), download: 'ranking.csv' });
+      document.body.append(a); a.click(); a.remove();
+    };
+
+    mostrar(h('div', { class: 'card' },
+      h('h2', {}, 'Ranking (visão do administrador)'),
+      h('p', { class: 'sub' }, 'Ordenado por acertos; em caso de empate, menor tempo médio de resposta.'),
+      h('div', { class: 'actions' },
+        h('button', { class: 'primary', onclick: () => telaRanking(key) }, 'Atualizar'),
+        h('button', { class: 'secondary', onclick: csv }, 'Baixar CSV')),
+      h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, cab), h('tbody', {}, linhas)))));
+  } catch (e) {
+    mostrar(h('div', { class: 'card' }, h('p', { class: 'err' }, e.message)));
+  }
+}
+
+/* ---------- início ---------- */
+(function () {
+  const key = new URLSearchParams(location.search).get('admin');
+  if (key) return telaRanking(key);
+  try { nome = localStorage.getItem('quiz_nome') || ''; } catch (e) {}
+  if (nome) carregar(); else telaNome();
+})();
+</script>
+</body>
+</html>
