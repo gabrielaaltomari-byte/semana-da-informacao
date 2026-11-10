@@ -152,7 +152,7 @@ function telaNome(erro) {
   const input = h('input', { type: 'text', id: 'nome', autocomplete: 'name', maxlength: '80', value: nome });
   const msg = h('p', { class: 'err' }, erro || '');
   const form = h('div', { class: 'card' },
-    h('label', { for: 'nome' }, 'Seu nome completo'),
+    h('label', { for: 'nome' }, 'Digite um nome ou apelido.'),
     input,
     msg,
     h('button', { class: 'primary', onclick: iniciar }, 'Começar'),
